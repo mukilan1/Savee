@@ -11,7 +11,9 @@ import {
   Menu,
   X,
   LogOut,
-  Zap
+  Zap,
+  BarChart3,
+  Briefcase
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -26,6 +28,8 @@ const menuItems = [
   { id: 'budget', label: 'Budget', icon: PieChart },
   { id: 'goals', label: 'Goals', icon: Target },
   { id: 'transactions', label: 'Transactions', icon: Receipt },
+  { id: 'investments', label: 'Investments', icon: Briefcase },
+  { id: 'analytics', label: 'Analytics', icon: BarChart3 },
   { id: 'chat', label: 'AI Assistant', icon: MessageCircle },
   { id: 'advanced', label: 'Advanced', icon: Zap },
   { id: 'settings', label: 'Settings', icon: Settings },
@@ -91,7 +95,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, onPageChange, isOpen, on
                 >
                   <Icon size={20} />
                   <span className="font-medium">{item.label}</span>
-                  {item.id === 'advanced' && (
+                  {(item.id === 'advanced' || item.id === 'analytics' || item.id === 'investments') && (
                     <span className="ml-auto text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full">New</span>
                   )}
                 </button>

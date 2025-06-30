@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { Toaster } from 'react-hot-toast';
 import { useAuth } from './hooks/useAuth';
 import { useProfile } from './hooks/useProfile';
+import { initSentry } from './services/sentryService';
+import { NotificationService } from './services/notificationService';
 import AuthForm from './components/AuthForm';
 import Sidebar from './components/Sidebar';
 import LandingPage from './pages/LandingPage';
@@ -11,9 +15,22 @@ import TransactionsPage from './pages/TransactionsPage';
 import GoalsPage from './pages/GoalsPage';
 import ChatPage from './pages/ChatPage';
 import AdvancedPage from './pages/AdvancedPage';
+import InvestmentsPage from './pages/InvestmentsPage';
+import AnalyticsPage from './pages/AnalyticsPage';
 import SettingsPage from './pages/SettingsPage';
+import LoadingScreen from './components/LoadingScreen';
+import ErrorBoundary from './components/ErrorBoundary';
 
 type AppState = 'landing' | 'auth' | 'onboarding' | 'app';
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000, // 5 minutes
+      retry: 3,
+    },
+  },
+});
 
 function App() {
   const { user, loading: authLoading } = useAuth();
@@ -21,9 +38,26 @@ function App() {
   const [appState, setAppState] = useState<AppState>('landing');
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
-    if (authLoading || profileLoading) return;
+    // Initialize services
+    const initializeApp = async () => {
+      try {
+        initSentry();
+        await NotificationService.getInstance().initialize();
+        setIsInitialized(true);
+      } catch (error) {
+        console.error('App initialization failed:', error);
+        setIsInitialized(true); // Continue anyway
+      }
+    };
+
+    initializeApp();
+  }, []);
+
+  useEffect(() => {
+    if (authLoading || profileLoading || !isInitialized) return;
 
     if (!user) {
       setAppState('landing');
@@ -32,7 +66,7 @@ function App() {
     } else {
       setAppState('app');
     }
-  }, [user, profile, authLoading, profileLoading]);
+  }, [user, profile, authLoading, profileLoading, isInitialized]);
 
   const handleGetStarted = () => {
     setAppState('auth');
@@ -54,15 +88,8 @@ function App() {
     setSidebarOpen(!sidebarOpen);
   };
 
-  if (authLoading || profileLoading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading Savee...</p>
-        </div>
-      </div>
-    );
+  if (!isInitialized || authLoading || profileLoading) {
+    return <LoadingScreen />;
   }
 
   if (appState === 'landing') {
@@ -96,6 +123,10 @@ function App() {
         return <TransactionsPage />;
       case 'goals':
         return <GoalsPage />;
+      case 'investments':
+        return <InvestmentsPage />;
+      case 'analytics':
+        return <AnalyticsPage />;
       case 'chat':
         return <ChatPage />;
       case 'advanced':
@@ -108,22 +139,37 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      <Sidebar
-        currentPage={currentPage}
-        onPageChange={setCurrentPage}
-        isOpen={sidebarOpen}
-        onToggle={toggleSidebar}
-      />
-      
-      <div className="flex-1 md:ml-0">
-        <main className="p-6 md:p-8 pt-16 md:pt-8">
-          <div className="max-w-7xl mx-auto">
-            {renderCurrentPage()}
+    <QueryClientProvider client={queryClient}>
+      <ErrorBoundary>
+        <div className="min-h-screen bg-gray-50 flex">
+          <Sidebar
+            currentPage={currentPage}
+            onPageChange={setCurrentPage}
+            isOpen={sidebarOpen}
+            onToggle={toggleSidebar}
+          />
+          
+          <div className="flex-1 md:ml-0">
+            <main className="p-6 md:p-8 pt-16 md:pt-8">
+              <div className="max-w-7xl mx-auto">
+                {renderCurrentPage()}
+              </div>
+            </main>
           </div>
-        </main>
-      </div>
-    </div>
+        </div>
+        
+        <Toaster
+          position="top-right"
+          toastOptions={{
+            duration: 4000,
+            style: {
+              background: '#363636',
+              color: '#fff',
+            },
+          }}
+        />
+      </ErrorBoundary>
+    </QueryClientProvider>
   );
 }
 
