@@ -1,0 +1,91 @@
+import React from 'react';
+import { 
+  Home, 
+  PieChart, 
+  Target, 
+  Receipt, 
+  MessageCircle, 
+  Settings,
+  TrendingUp,
+  Menu,
+  X
+} from 'lucide-react';
+
+interface SidebarProps {
+  currentPage: string;
+  onPageChange: (page: string) => void;
+  isOpen: boolean;
+  onToggle: () => void;
+}
+
+const menuItems = [
+  { id: 'dashboard', label: 'Dashboard', icon: Home },
+  { id: 'budget', label: 'Budget', icon: PieChart },
+  { id: 'goals', label: 'Goals', icon: Target },
+  { id: 'transactions', label: 'Transactions', icon: Receipt },
+  { id: 'chat', label: 'AI Assistant', icon: MessageCircle },
+  { id: 'settings', label: 'Settings', icon: Settings },
+];
+
+const Sidebar: React.FC<SidebarProps> = ({ currentPage, onPageChange, isOpen, onToggle }) => {
+  return (
+    <>
+      {/* Mobile Menu Button */}
+      <button
+        onClick={onToggle}
+        className="fixed top-4 left-4 z-50 md:hidden bg-emerald-600 text-white p-2 rounded-lg shadow-lg hover:bg-emerald-700 transition-colors"
+      >
+        {isOpen ? <X size={24} /> : <Menu size={24} />}
+      </button>
+
+      {/* Overlay */}
+      {isOpen && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 z-30 md:hidden"
+          onClick={onToggle}
+        />
+      )}
+
+      {/* Sidebar */}
+      <div className={`
+        fixed left-0 top-0 h-full w-64 bg-white shadow-lg transform transition-transform duration-300 z-40
+        md:relative md:transform-none md:z-auto
+        ${isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+      `}>
+        <div className="p-6">
+          <div className="flex items-center space-x-2 mb-8 pt-12 md:pt-0">
+            <TrendingUp className="h-8 w-8 text-emerald-600" />
+            <h1 className="text-2xl font-bold text-gray-800">Savee</h1>
+          </div>
+          
+          <nav className="space-y-2">
+            {menuItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => {
+                    onPageChange(item.id);
+                    if (window.innerWidth < 768) onToggle();
+                  }}
+                  className={`
+                    w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left transition-all duration-200
+                    ${currentPage === item.id
+                      ? 'bg-emerald-50 text-emerald-700 border-r-4 border-emerald-600'
+                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-800'
+                    }
+                  `}
+                >
+                  <Icon size={20} />
+                  <span className="font-medium">{item.label}</span>
+                </button>
+              );
+            })}
+          </nav>
+        </div>
+      </div>
+    </>
+  );
+};
+
+export default Sidebar;
