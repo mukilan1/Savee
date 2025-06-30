@@ -3,7 +3,6 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'react-hot-toast';
 import { useAuth } from './hooks/useAuth';
 import { useProfile } from './hooks/useProfile';
-import { initSentry } from './services/sentryService';
 import { NotificationService } from './services/notificationService';
 import AuthForm from './components/AuthForm';
 import Sidebar from './components/Sidebar';
@@ -44,7 +43,6 @@ function App() {
     // Initialize services
     const initializeApp = async () => {
       try {
-        initSentry();
         await NotificationService.getInstance().initialize();
         setIsInitialized(true);
       } catch (error) {
