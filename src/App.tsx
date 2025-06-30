@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from './hooks/useAuth';
 import { useProfile } from './hooks/useProfile';
-import { initSentry } from './services/sentryService';
 import AuthForm from './components/AuthForm';
 import Sidebar from './components/Sidebar';
 import LandingPage from './pages/LandingPage';
@@ -22,11 +21,6 @@ function App() {
   const [appState, setAppState] = useState<AppState>('landing');
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
-
-  useEffect(() => {
-    // Initialize Sentry for error monitoring
-    initSentry();
-  }, []);
 
   useEffect(() => {
     if (authLoading || profileLoading) return;
