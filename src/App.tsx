@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from './hooks/useAuth';
 import { useProfile } from './hooks/useProfile';
+import { initSentry } from './services/sentryService';
 import AuthForm from './components/AuthForm';
 import Sidebar from './components/Sidebar';
 import LandingPage from './pages/LandingPage';
@@ -10,6 +11,7 @@ import BudgetPage from './pages/BudgetPage';
 import TransactionsPage from './pages/TransactionsPage';
 import GoalsPage from './pages/GoalsPage';
 import ChatPage from './pages/ChatPage';
+import AdvancedPage from './pages/AdvancedPage';
 import SettingsPage from './pages/SettingsPage';
 
 type AppState = 'landing' | 'auth' | 'onboarding' | 'app';
@@ -20,6 +22,11 @@ function App() {
   const [appState, setAppState] = useState<AppState>('landing');
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  useEffect(() => {
+    // Initialize Sentry for error monitoring
+    initSentry();
+  }, []);
 
   useEffect(() => {
     if (authLoading || profileLoading) return;
@@ -58,7 +65,7 @@ function App() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
+          <p className="text-gray-600">Loading Savee...</p>
         </div>
       </div>
     );
@@ -97,6 +104,8 @@ function App() {
         return <GoalsPage />;
       case 'chat':
         return <ChatPage />;
+      case 'advanced':
+        return <AdvancedPage />;
       case 'settings':
         return <SettingsPage />;
       default:

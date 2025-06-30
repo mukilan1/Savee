@@ -10,7 +10,8 @@ import {
   TrendingUp,
   Menu,
   X,
-  LogOut
+  LogOut,
+  Zap
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -26,6 +27,7 @@ const menuItems = [
   { id: 'goals', label: 'Goals', icon: Target },
   { id: 'transactions', label: 'Transactions', icon: Receipt },
   { id: 'chat', label: 'AI Assistant', icon: MessageCircle },
+  { id: 'advanced', label: 'Advanced', icon: Zap },
   { id: 'settings', label: 'Settings', icon: Settings },
 ];
 
@@ -66,6 +68,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, onPageChange, isOpen, on
           <div className="flex items-center space-x-2 mb-8 pt-12 md:pt-0">
             <TrendingUp className="h-8 w-8 text-emerald-600" />
             <h1 className="text-2xl font-bold text-gray-800">Savee</h1>
+            <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full font-medium">Pro</span>
           </div>
           
           <nav className="space-y-2">
@@ -88,6 +91,9 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, onPageChange, isOpen, on
                 >
                   <Icon size={20} />
                   <span className="font-medium">{item.label}</span>
+                  {item.id === 'advanced' && (
+                    <span className="ml-auto text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full">New</span>
+                  )}
                 </button>
               );
             })}
