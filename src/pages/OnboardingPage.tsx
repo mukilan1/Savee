@@ -1,19 +1,21 @@
 import React, { useState } from 'react';
-import { User } from '../types';
+import { useProfile } from '../hooks/useProfile';
 import { CheckCircle, ArrowRight } from 'lucide-react';
 
 interface OnboardingPageProps {
-  onComplete: (userData: User) => void;
+  onComplete: () => void;
 }
 
 const OnboardingPage: React.FC<OnboardingPageProps> = ({ onComplete }) => {
+  const { createProfile } = useProfile();
+  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     age: '',
     monthlyIncome: '',
-    occupation: 'professional' as User['occupation'],
+    occupation: 'professional' as 'student' | 'professional' | 'homemaker' | 'business-owner',
     goals: [] as string[],
-    riskPreference: 'medium' as User['riskPreference']
+    riskPreference: 'medium' as 'low' | 'medium' | 'high'
   });
 
   const goalOptions = [
@@ -36,17 +38,27 @@ const OnboardingPage: React.FC<OnboardingPageProps> = ({ onComplete }) => {
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const userData: User = {
-      name: formData.name,
-      age: parseInt(formData.age),
-      monthlyIncome: parseInt(formData.monthlyIncome),
-      occupation: formData.occupation,
-      goals: formData.goals,
-      riskPreference: formData.riskPreference
-    };
-    onComplete(userData);
+    setLoading(true);
+
+    try {
+      const { error } = await createProfile({
+        name: formData.name,
+        age: parseInt(formData.age),
+        monthly_income: parseInt(formData.monthlyIncome),
+        occupation: formData.occupation,
+        goals: formData.goals,
+        risk_preference: formData.riskPreference
+      });
+
+      if (error) throw error;
+      onComplete();
+    } catch (error) {
+      console.error('Error creating profile:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const isFormValid = formData.name && formData.age && formData.monthlyIncome && formData.goals.length > 0;
@@ -117,7 +129,7 @@ const OnboardingPage: React.FC<OnboardingPageProps> = ({ onComplete }) => {
               </label>
               <select
                 value={formData.occupation}
-                onChange={(e) => setFormData(prev => ({ ...prev, occupation: e.target.value as User['occupation'] }))}
+                onChange={(e) => setFormData(prev => ({ ...prev, occupation: e.target.value as typeof formData.occupation }))}
                 className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
               >
                 <option value="student">Student</option>
@@ -163,14 +175,14 @@ const OnboardingPage: React.FC<OnboardingPageProps> = ({ onComplete }) => {
             
             <div className="grid grid-cols-3 gap-3">
               {[
-                { value: 'low', label: 'Conservative', desc: 'Low risk, steady returns' },
-                { value: 'medium', label: 'Balanced', desc: 'Moderate risk, balanced growth' },
-                { value: 'high', label: 'Aggressive', desc: 'High risk, high potential returns' }
+                { value: 'low' as const, label: 'Conservative', desc: 'Low risk, steady returns' },
+                { value: 'medium' as const, label: 'Balanced', desc: 'Moderate risk, balanced growth' },
+                { value: 'high' as const, label: 'Aggressive', desc: 'High risk, high potential returns' }
               ].map((option) => (
                 <button
                   key={option.value}
                   type="button"
-                  onClick={() => setFormData(prev => ({ ...prev, riskPreference: option.value as User['riskPreference'] }))}
+                  onClick={() => setFormData(prev => ({ ...prev, riskPreference: option.value }))}
                   className={`
                     p-4 rounded-lg border-2 transition-all duration-200 text-center
                     ${formData.riskPreference === option.value
@@ -188,17 +200,17 @@ const OnboardingPage: React.FC<OnboardingPageProps> = ({ onComplete }) => {
 
           <button
             type="submit"
-            disabled={!isFormValid}
+            disabled={!isFormValid || loading}
             className={`
               w-full py-4 px-6 rounded-lg font-semibold text-lg transition-all duration-200 flex items-center justify-center space-x-2
-              ${isFormValid
+              ${isFormValid && !loading
                 ? 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-lg hover:shadow-xl'
                 : 'bg-gray-300 text-gray-500 cursor-not-allowed'
               }
             `}
           >
-            <span>Continue to Dashboard</span>
-            <ArrowRight size={20} />
+            <span>{loading ? 'Creating Profile...' : 'Continue to Dashboard'}</span>
+            {!loading && <ArrowRight size={20} />}
           </button>
         </form>
       </div>

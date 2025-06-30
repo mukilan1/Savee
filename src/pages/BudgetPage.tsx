@@ -1,50 +1,68 @@
-import React, { useState } from 'react';
-import { User, BudgetAllocation } from '../types';
+import React, { useState, useEffect } from 'react';
+import { useProfile } from '../hooks/useProfile';
+import { useBudget } from '../hooks/useBudget';
 import Chart from '../components/Chart';
 import { Sliders, Save, Target, AlertTriangle, CheckCircle } from 'lucide-react';
 
-interface BudgetPageProps {
-  user: User;
-}
-
-const BudgetPage: React.FC<BudgetPageProps> = ({ user }) => {
-  const [budget, setBudget] = useState<BudgetAllocation>({
+const BudgetPage: React.FC = () => {
+  const { profile } = useProfile();
+  const { budget, saveBudget } = useBudget();
+  const [budgetAllocation, setBudgetAllocation] = useState({
     expenses: 60,
     savings: 20,
     investments: 15,
-    emergencyFund: 5
+    emergency_fund: 5
   });
-
-  const [monthlyIncome, setMonthlyIncome] = useState(user.monthlyIncome);
+  const [monthlyIncome, setMonthlyIncome] = useState(0);
   const [isSaved, setIsSaved] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const handleSliderChange = (category: keyof BudgetAllocation, value: number) => {
-    setBudget(prev => ({ ...prev, [category]: value }));
+  useEffect(() => {
+    if (profile) {
+      setMonthlyIncome(profile.monthly_income);
+    }
+  }, [profile]);
+
+  useEffect(() => {
+    if (budget) {
+      setBudgetAllocation({
+        expenses: budget.expenses,
+        savings: budget.savings,
+        investments: budget.investments,
+        emergency_fund: budget.emergency_fund
+      });
+    }
+  }, [budget]);
+
+  if (!profile) return null;
+
+  const handleSliderChange = (category: keyof typeof budgetAllocation, value: number) => {
+    setBudgetAllocation(prev => ({ ...prev, [category]: value }));
     setIsSaved(false);
   };
 
-  const totalAllocation = Object.values(budget).reduce((sum, value) => sum + value, 0);
+  const totalAllocation = Object.values(budgetAllocation).reduce((sum, value) => sum + value, 0);
   const isValidBudget = totalAllocation === 100;
 
   const chartData = [
-    { label: 'Expenses', value: budget.expenses, color: '#ef4444' },
-    { label: 'Savings', value: budget.savings, color: '#3b82f6' },
-    { label: 'Investments', value: budget.investments, color: '#10b981' },
-    { label: 'Emergency Fund', value: budget.emergencyFund, color: '#f59e0b' }
+    { label: 'Expenses', value: budgetAllocation.expenses, color: '#ef4444' },
+    { label: 'Savings', value: budgetAllocation.savings, color: '#3b82f6' },
+    { label: 'Investments', value: budgetAllocation.investments, color: '#10b981' },
+    { label: 'Emergency Fund', value: budgetAllocation.emergency_fund, color: '#f59e0b' }
   ];
 
   const getBudgetAdvice = () => {
-    if (budget.savings < 20) {
+    if (budgetAllocation.savings < 20) {
       return {
         type: 'warning',
         message: 'Consider increasing savings to at least 20% for better financial security.'
       };
-    } else if (budget.investments < 10 && user.age < 40) {
+    } else if (budgetAllocation.investments < 10 && profile.age < 40) {
       return {
         type: 'info',
         message: 'Young professionals should ideally invest 15-20% for long-term wealth building.'
       };
-    } else if (budget.emergencyFund < 5) {
+    } else if (budgetAllocation.emergency_fund < 5) {
       return {
         type: 'warning',
         message: 'Emergency fund should be at least 5-10% of your income for unexpected expenses.'
@@ -59,10 +77,20 @@ const BudgetPage: React.FC<BudgetPageProps> = ({ user }) => {
 
   const advice = getBudgetAdvice();
 
-  const saveBudget = () => {
-    if (isValidBudget) {
+  const handleSaveBudget = async () => {
+    if (!isValidBudget) return;
+
+    setLoading(true);
+    try {
+      const { error } = await saveBudget(budgetAllocation);
+      if (error) throw error;
+
       setIsSaved(true);
       setTimeout(() => setIsSaved(false), 3000);
+    } catch (error) {
+      console.error('Error saving budget:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -96,13 +124,13 @@ const BudgetPage: React.FC<BudgetPageProps> = ({ user }) => {
 
           {/* Budget Sliders */}
           <div className="space-y-6">
-            {Object.entries(budget).map(([category, value]) => {
+            {Object.entries(budgetAllocation).map(([category, value]) => {
               const amount = (monthlyIncome * value) / 100;
               const categoryLabels = {
                 expenses: 'Living Expenses',
                 savings: 'Savings',
                 investments: 'Investments',
-                emergencyFund: 'Emergency Fund'
+                emergency_fund: 'Emergency Fund'
               };
 
               return (
@@ -120,7 +148,7 @@ const BudgetPage: React.FC<BudgetPageProps> = ({ user }) => {
                     min="0"
                     max="80"
                     value={value}
-                    onChange={(e) => handleSliderChange(category as keyof BudgetAllocation, parseInt(e.target.value))}
+                    onChange={(e) => handleSliderChange(category as keyof typeof budgetAllocation, parseInt(e.target.value))}
                     className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
                   />
                 </div>
@@ -227,11 +255,11 @@ const BudgetPage: React.FC<BudgetPageProps> = ({ user }) => {
       {/* Save Button */}
       <div className="flex justify-center">
         <button
-          onClick={saveBudget}
-          disabled={!isValidBudget}
+          onClick={handleSaveBudget}
+          disabled={!isValidBudget || loading}
           className={`
             flex items-center space-x-2 px-8 py-3 rounded-lg font-semibold transition-all duration-200
-            ${isValidBudget
+            ${isValidBudget && !loading
               ? 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-lg hover:shadow-xl'
               : 'bg-gray-300 text-gray-500 cursor-not-allowed'
             }
@@ -239,7 +267,9 @@ const BudgetPage: React.FC<BudgetPageProps> = ({ user }) => {
           `}
         >
           <Save size={20} />
-          <span>{isSaved ? 'Budget Saved!' : 'Save Budget Plan'}</span>
+          <span>
+            {loading ? 'Saving...' : isSaved ? 'Budget Saved!' : 'Save Budget Plan'}
+          </span>
         </button>
       </div>
     </div>

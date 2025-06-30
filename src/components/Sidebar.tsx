@@ -1,4 +1,5 @@
 import React from 'react';
+import { useAuth } from '../hooks/useAuth';
 import { 
   Home, 
   PieChart, 
@@ -8,7 +9,8 @@ import {
   Settings,
   TrendingUp,
   Menu,
-  X
+  X,
+  LogOut
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -28,6 +30,14 @@ const menuItems = [
 ];
 
 const Sidebar: React.FC<SidebarProps> = ({ currentPage, onPageChange, isOpen, onToggle }) => {
+  const { signOut } = useAuth();
+
+  const handleSignOut = async () => {
+    if (confirm('Are you sure you want to sign out?')) {
+      await signOut();
+    }
+  };
+
   return (
     <>
       {/* Mobile Menu Button */}
@@ -48,11 +58,11 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, onPageChange, isOpen, on
 
       {/* Sidebar */}
       <div className={`
-        fixed left-0 top-0 h-full w-64 bg-white shadow-lg transform transition-transform duration-300 z-40
+        fixed left-0 top-0 h-full w-64 bg-white shadow-lg transform transition-transform duration-300 z-40 flex flex-col
         md:relative md:transform-none md:z-auto
         ${isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
       `}>
-        <div className="p-6">
+        <div className="p-6 flex-1">
           <div className="flex items-center space-x-2 mb-8 pt-12 md:pt-0">
             <TrendingUp className="h-8 w-8 text-emerald-600" />
             <h1 className="text-2xl font-bold text-gray-800">Savee</h1>
@@ -82,6 +92,17 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, onPageChange, isOpen, on
               );
             })}
           </nav>
+        </div>
+
+        {/* Sign Out Button */}
+        <div className="p-6 border-t border-gray-100">
+          <button
+            onClick={handleSignOut}
+            className="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left transition-all duration-200 text-red-600 hover:bg-red-50"
+          >
+            <LogOut size={20} />
+            <span className="font-medium">Sign Out</span>
+          </button>
         </div>
       </div>
     </>

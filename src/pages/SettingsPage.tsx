@@ -1,20 +1,18 @@
-import React, { useState } from 'react';
-import { User } from '../types';
-import { Save, User as UserIcon, DollarSign, Target, Shield, Bell, CheckCircle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { useProfile } from '../hooks/useProfile';
+import { useAuth } from '../hooks/useAuth';
+import { Save, User as UserIcon, Target, Shield, Bell, CheckCircle, LogOut } from 'lucide-react';
 
-interface SettingsPageProps {
-  user: User;
-  onUpdateUser: (updatedUser: User) => void;
-}
-
-const SettingsPage: React.FC<SettingsPageProps> = ({ user, onUpdateUser }) => {
+const SettingsPage: React.FC = () => {
+  const { profile, updateProfile } = useProfile();
+  const { signOut } = useAuth();
   const [formData, setFormData] = useState({
-    name: user.name,
-    age: user.age.toString(),
-    monthlyIncome: user.monthlyIncome.toString(),
-    occupation: user.occupation,
-    goals: user.goals,
-    riskPreference: user.riskPreference
+    name: '',
+    age: '',
+    monthly_income: '',
+    occupation: 'professional' as 'student' | 'professional' | 'homemaker' | 'business-owner',
+    goals: [] as string[],
+    risk_preference: 'medium' as 'low' | 'medium' | 'high'
   });
 
   const [notifications, setNotifications] = useState({
@@ -25,6 +23,22 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ user, onUpdateUser }) => {
   });
 
   const [isSaved, setIsSaved] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (profile) {
+      setFormData({
+        name: profile.name,
+        age: profile.age.toString(),
+        monthly_income: profile.monthly_income.toString(),
+        occupation: profile.occupation,
+        goals: profile.goals,
+        risk_preference: profile.risk_preference
+      });
+    }
+  }, [profile]);
+
+  if (!profile) return null;
 
   const goalOptions = [
     'Buy a car',
@@ -46,20 +60,35 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ user, onUpdateUser }) => {
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const updatedUser: User = {
-      name: formData.name,
-      age: parseInt(formData.age),
-      monthlyIncome: parseInt(formData.monthlyIncome),
-      occupation: formData.occupation,
-      goals: formData.goals,
-      riskPreference: formData.riskPreference
-    };
-    
-    onUpdateUser(updatedUser);
-    setIsSaved(true);
-    setTimeout(() => setIsSaved(false), 3000);
+    setLoading(true);
+
+    try {
+      const { error } = await updateProfile({
+        name: formData.name,
+        age: parseInt(formData.age),
+        monthly_income: parseInt(formData.monthly_income),
+        occupation: formData.occupation,
+        goals: formData.goals,
+        risk_preference: formData.risk_preference
+      });
+
+      if (error) throw error;
+
+      setIsSaved(true);
+      setTimeout(() => setIsSaved(false), 3000);
+    } catch (error) {
+      console.error('Error updating profile:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSignOut = async () => {
+    if (confirm('Are you sure you want to sign out?')) {
+      await signOut();
+    }
   };
 
   return (
@@ -114,8 +143,8 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ user, onUpdateUser }) => {
                 <input
                   type="number"
                   min="0"
-                  value={formData.monthlyIncome}
-                  onChange={(e) => setFormData(prev => ({ ...prev, monthlyIncome: e.target.value }))}
+                  value={formData.monthly_income}
+                  onChange={(e) => setFormData(prev => ({ ...prev, monthly_income: e.target.value }))}
                   className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
                 />
               </div>
@@ -126,7 +155,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ user, onUpdateUser }) => {
                 </label>
                 <select
                   value={formData.occupation}
-                  onChange={(e) => setFormData(prev => ({ ...prev, occupation: e.target.value as User['occupation'] }))}
+                  onChange={(e) => setFormData(prev => ({ ...prev, occupation: e.target.value as typeof formData.occupation }))}
                   className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
                 >
                   <option value="student">Student</option>
@@ -138,16 +167,21 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ user, onUpdateUser }) => {
 
               <button
                 type="submit"
+                disabled={loading}
                 className={`
                   flex items-center space-x-2 px-6 py-3 rounded-lg font-semibold transition-all duration-200
                   ${isSaved
                     ? 'bg-green-600 text-white'
+                    : loading
+                    ? 'bg-gray-400 text-white cursor-not-allowed'
                     : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-lg hover:shadow-xl'
                   }
                 `}
               >
                 {isSaved ? <CheckCircle size={20} /> : <Save size={20} />}
-                <span>{isSaved ? 'Profile Saved!' : 'Save Changes'}</span>
+                <span>
+                  {loading ? 'Saving...' : isSaved ? 'Profile Saved!' : 'Save Changes'}
+                </span>
               </button>
             </form>
           </div>
@@ -192,17 +226,17 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ user, onUpdateUser }) => {
 
             <div className="grid grid-cols-3 gap-3">
               {[
-                { value: 'low', label: 'Conservative', desc: 'Low risk, steady returns' },
-                { value: 'medium', label: 'Balanced', desc: 'Moderate risk, balanced growth' },
-                { value: 'high', label: 'Aggressive', desc: 'High risk, high potential returns' }
+                { value: 'low' as const, label: 'Conservative', desc: 'Low risk, steady returns' },
+                { value: 'medium' as const, label: 'Balanced', desc: 'Moderate risk, balanced growth' },
+                { value: 'high' as const, label: 'Aggressive', desc: 'High risk, high potential returns' }
               ].map((option) => (
                 <button
                   key={option.value}
                   type="button"
-                  onClick={() => setFormData(prev => ({ ...prev, riskPreference: option.value as User['riskPreference'] }))}
+                  onClick={() => setFormData(prev => ({ ...prev, risk_preference: option.value }))}
                   className={`
                     p-4 rounded-lg border-2 transition-all duration-200 text-center
-                    ${formData.riskPreference === option.value
+                    ${formData.risk_preference === option.value
                       ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
                       : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
                     }
@@ -266,24 +300,26 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ user, onUpdateUser }) => {
             <div className="space-y-3">
               <div className="flex justify-between">
                 <span className="text-sm text-gray-600">Member since</span>
-                <span className="text-sm font-medium">Jan 2024</span>
+                <span className="text-sm font-medium">
+                  {new Date(profile.created_at).toLocaleDateString('en-IN')}
+                </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-sm text-gray-600">Goals created</span>
-                <span className="text-sm font-medium">{user.goals.length}</span>
+                <span className="text-sm font-medium">{profile.goals.length}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-sm text-gray-600">Monthly income</span>
-                <span className="text-sm font-medium">₹{user.monthlyIncome.toLocaleString()}</span>
+                <span className="text-sm font-medium">₹{profile.monthly_income.toLocaleString()}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-sm text-gray-600">Risk level</span>
                 <span className={`text-sm font-medium capitalize ${
-                  user.riskPreference === 'low' ? 'text-green-600' :
-                  user.riskPreference === 'medium' ? 'text-yellow-600' :
+                  profile.risk_preference === 'low' ? 'text-green-600' :
+                  profile.risk_preference === 'medium' ? 'text-yellow-600' :
                   'text-red-600'
                 }`}>
-                  {user.riskPreference}
+                  {profile.risk_preference}
                 </span>
               </div>
             </div>
@@ -303,8 +339,12 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ user, onUpdateUser }) => {
               <button className="w-full text-left px-3 py-2 rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition-colors">
                 Help & Support
               </button>
-              <button className="w-full text-left px-3 py-2 rounded-lg text-sm text-red-600 hover:bg-red-50 transition-colors">
-                Delete Account
+              <button 
+                onClick={handleSignOut}
+                className="w-full text-left px-3 py-2 rounded-lg text-sm text-red-600 hover:bg-red-50 transition-colors flex items-center space-x-2"
+              >
+                <LogOut size={16} />
+                <span>Sign Out</span>
               </button>
             </div>
           </div>

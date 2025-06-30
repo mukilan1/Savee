@@ -1,6 +1,7 @@
 import React from 'react';
-import { User } from '../types';
-import { mockTransactions, mockGoals } from '../data/mockData';
+import { useProfile } from '../hooks/useProfile';
+import { useTransactions } from '../hooks/useTransactions';
+import { useGoals } from '../hooks/useGoals';
 import ProgressBar from '../components/ProgressBar';
 import { 
   TrendingUp, 
@@ -12,26 +13,28 @@ import {
   Lightbulb
 } from 'lucide-react';
 
-interface DashboardPageProps {
-  user: User;
-}
+const DashboardPage: React.FC = () => {
+  const { profile } = useProfile();
+  const { transactions } = useTransactions();
+  const { goals } = useGoals();
 
-const DashboardPage: React.FC<DashboardPageProps> = ({ user }) => {
+  if (!profile) return null;
+
   // Calculate financial metrics
-  const totalIncome = mockTransactions
+  const totalIncome = transactions
     .filter(t => t.type === 'income')
     .reduce((sum, t) => sum + t.amount, 0);
   
-  const totalExpenses = Math.abs(mockTransactions
+  const totalExpenses = Math.abs(transactions
     .filter(t => t.type === 'expense')
     .reduce((sum, t) => sum + t.amount, 0));
   
   const savings = totalIncome - totalExpenses;
-  const savingsRate = ((savings / totalIncome) * 100);
+  const savingsRate = totalIncome > 0 ? ((savings / totalIncome) * 100) : 0;
 
-  const totalGoalTarget = mockGoals.reduce((sum, goal) => sum + goal.targetAmount, 0);
-  const totalGoalSaved = mockGoals.reduce((sum, goal) => sum + goal.savedAmount, 0);
-  const goalProgress = (totalGoalSaved / totalGoalTarget) * 100;
+  const totalGoalTarget = goals.reduce((sum, goal) => sum + goal.target_amount, 0);
+  const totalGoalSaved = goals.reduce((sum, goal) => sum + goal.saved_amount, 0);
+  const goalProgress = totalGoalTarget > 0 ? (totalGoalSaved / totalGoalTarget) * 100 : 0;
 
   // AI Suggestions based on user profile and data
   const getAISuggestion = () => {
@@ -42,7 +45,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user }) => {
         message: `Your current savings rate is ${savingsRate.toFixed(1)}%. Try to reduce dining out expenses by ₹3,000 this month to reach the recommended 20% savings rate.`,
         icon: AlertCircle
       };
-    } else if (user.occupation === 'professional' && savings > 50000) {
+    } else if (profile.occupation === 'professional' && savings > 50000) {
       return {
         type: 'success',
         title: 'Investment Opportunity',
@@ -53,7 +56,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user }) => {
       return {
         type: 'info',
         title: 'Emergency Fund Progress',
-        message: `You're doing well! Your emergency fund is 42% complete. Continue saving ₹8,000/month to fully secure your financial safety net.`,
+        message: `You're doing well! Continue saving ₹8,000/month to build a strong financial safety net.`,
         icon: CheckCircle
       };
     }
@@ -64,8 +67,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user }) => {
   return (
     <div className="space-y-6">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Welcome back, {user.name}!</h1>
-        <p className="text-gray-600">Here's your financial overview for this month</p>
+        <h1 className="text-2xl font-bold text-gray-900">Welcome back, {profile.name}!</h1>
+        <p className="text-gray-600">Here's your financial overview</p>
       </div>
 
       {/* Financial Snapshot Cards */}
@@ -76,7 +79,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user }) => {
             <TrendingUp className="h-5 w-5 text-emerald-600" />
           </div>
           <p className="text-2xl font-bold text-gray-900">₹{totalIncome.toLocaleString()}</p>
-          <p className="text-sm text-emerald-600 mt-1">+12% from last month</p>
+          <p className="text-sm text-emerald-600 mt-1">This month</p>
         </div>
 
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
@@ -85,7 +88,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user }) => {
             <TrendingDown className="h-5 w-5 text-red-500" />
           </div>
           <p className="text-2xl font-bold text-gray-900">₹{totalExpenses.toLocaleString()}</p>
-          <p className="text-sm text-red-500 mt-1">+5% from last month</p>
+          <p className="text-sm text-red-500 mt-1">This month</p>
         </div>
 
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
@@ -143,59 +146,68 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user }) => {
       </div>
 
       {/* Goals Progress */}
-      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Active Goals Progress</h2>
-        <div className="space-y-4">
-          {mockGoals.slice(0, 3).map((goal) => {
-            const progress = (goal.savedAmount / goal.targetAmount) * 100;
-            return (
-              <div key={goal.id} className="border border-gray-100 rounded-lg p-4">
-                <div className="flex justify-between items-center mb-2">
-                  <h3 className="font-medium text-gray-900">{goal.name}</h3>
-                  <span className="text-sm text-gray-600">
-                    ₹{goal.savedAmount.toLocaleString()} / ₹{goal.targetAmount.toLocaleString()}
-                  </span>
+      {goals.length > 0 && (
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Active Goals Progress</h2>
+          <div className="space-y-4">
+            {goals.slice(0, 3).map((goal) => {
+              const progress = (goal.saved_amount / goal.target_amount) * 100;
+              return (
+                <div key={goal.id} className="border border-gray-100 rounded-lg p-4">
+                  <div className="flex justify-between items-center mb-2">
+                    <h3 className="font-medium text-gray-900">{goal.name}</h3>
+                    <span className="text-sm text-gray-600">
+                      ₹{goal.saved_amount.toLocaleString()} / ₹{goal.target_amount.toLocaleString()}
+                    </span>
+                  </div>
+                  <ProgressBar progress={progress} showPercentage={false} />
+                  <div className="flex justify-between text-sm text-gray-600 mt-1">
+                    <span>{Math.round(progress)}% complete</span>
+                    <span>₹{(goal.target_amount - goal.saved_amount).toLocaleString()} remaining</span>
+                  </div>
                 </div>
-                <ProgressBar progress={progress} showPercentage={false} />
-                <div className="flex justify-between text-sm text-gray-600 mt-1">
-                  <span>{Math.round(progress)}% complete</span>
-                  <span>₹{(goal.targetAmount - goal.savedAmount).toLocaleString()} remaining</span>
-                </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
-      </div>
-
-      {/* Notification Banner */}
-      <div className="bg-emerald-100 border border-emerald-200 p-4 rounded-xl">
-        <div className="flex items-center space-x-3">
-          <CheckCircle className="h-5 w-5 text-emerald-600" />
-          <p className="text-emerald-800 font-medium">
-            Great news! You're ₹3,200 under budget this month. Consider allocating this to your emergency fund.
-          </p>
-        </div>
-      </div>
+      )}
 
       {/* Recent Activity */}
-      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Recent Transactions</h2>
-        <div className="space-y-3">
-          {mockTransactions.slice(0, 5).map((transaction) => (
-            <div key={transaction.id} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-b-0">
-              <div>
-                <p className="font-medium text-gray-900">{transaction.description}</p>
-                <p className="text-sm text-gray-600">{transaction.category} • {transaction.date}</p>
+      {transactions.length > 0 && (
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Recent Transactions</h2>
+          <div className="space-y-3">
+            {transactions.slice(0, 5).map((transaction) => (
+              <div key={transaction.id} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-b-0">
+                <div>
+                  <p className="font-medium text-gray-900">{transaction.description}</p>
+                  <p className="text-sm text-gray-600">{transaction.category} • {new Date(transaction.date).toLocaleDateString('en-IN')}</p>
+                </div>
+                <span className={`font-semibold ${
+                  transaction.type === 'income' ? 'text-emerald-600' : 'text-red-600'
+                }`}>
+                  {transaction.type === 'income' ? '+' : ''}₹{Math.abs(transaction.amount).toLocaleString()}
+                </span>
               </div>
-              <span className={`font-semibold ${
-                transaction.type === 'income' ? 'text-emerald-600' : 'text-red-600'
-              }`}>
-                {transaction.type === 'income' ? '+' : ''}₹{Math.abs(transaction.amount).toLocaleString()}
-              </span>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* Welcome message for new users */}
+      {transactions.length === 0 && goals.length === 0 && (
+        <div className="bg-emerald-100 border border-emerald-200 p-6 rounded-xl">
+          <div className="flex items-center space-x-3">
+            <CheckCircle className="h-6 w-6 text-emerald-600" />
+            <div>
+              <h3 className="text-emerald-800 font-semibold">Welcome to Savee!</h3>
+              <p className="text-emerald-700 mt-1">
+                Start by adding your first transaction or setting up a financial goal to see personalized insights.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

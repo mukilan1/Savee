@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
-import { User } from './types';
+import React, { useState, useEffect } from 'react';
+import { useAuth } from './hooks/useAuth';
+import { useProfile } from './hooks/useProfile';
+import AuthForm from './components/AuthForm';
 import Sidebar from './components/Sidebar';
 import LandingPage from './pages/LandingPage';
 import OnboardingPage from './pages/OnboardingPage';
@@ -10,43 +12,57 @@ import GoalsPage from './pages/GoalsPage';
 import ChatPage from './pages/ChatPage';
 import SettingsPage from './pages/SettingsPage';
 
-type AppState = 'landing' | 'onboarding' | 'app';
+type AppState = 'landing' | 'auth' | 'onboarding' | 'app';
 
 function App() {
+  const { user, loading: authLoading } = useAuth();
+  const { profile, loading: profileLoading } = useProfile();
   const [appState, setAppState] = useState<AppState>('landing');
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [user, setUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    if (authLoading || profileLoading) return;
+
+    if (!user) {
+      setAppState('landing');
+    } else if (!profile) {
+      setAppState('onboarding');
+    } else {
+      setAppState('app');
+    }
+  }, [user, profile, authLoading, profileLoading]);
 
   const handleGetStarted = () => {
-    setAppState('onboarding');
+    setAppState('auth');
   };
 
   const handleLogin = () => {
-    // For demo purposes, skip to dashboard with default user
-    setUser({
-      name: 'Demo User',
-      age: 28,
-      monthlyIncome: 75000,
-      occupation: 'professional',
-      goals: ['Save for emergency', 'Buy a car', 'Start investing'],
-      riskPreference: 'medium'
-    });
-    setAppState('app');
+    setAppState('auth');
   };
 
-  const handleOnboardingComplete = (userData: User) => {
-    setUser(userData);
-    setAppState('app');
+  const handleAuthSuccess = () => {
+    // The useEffect will handle the state transition
   };
 
-  const handleUpdateUser = (updatedUser: User) => {
-    setUser(updatedUser);
+  const handleOnboardingComplete = () => {
+    // The useEffect will handle the state transition
   };
 
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
   };
+
+  if (authLoading || profileLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (appState === 'landing') {
     return (
@@ -57,22 +73,24 @@ function App() {
     );
   }
 
-  if (appState === 'onboarding') {
-    return (
-      <OnboardingPage onComplete={handleOnboardingComplete} />
-    );
+  if (appState === 'auth') {
+    return <AuthForm onSuccess={handleAuthSuccess} />;
   }
 
-  if (!user) {
+  if (appState === 'onboarding') {
+    return <OnboardingPage onComplete={handleOnboardingComplete} />;
+  }
+
+  if (!profile) {
     return null; // This shouldn't happen, but good to handle
   }
 
   const renderCurrentPage = () => {
     switch (currentPage) {
       case 'dashboard':
-        return <DashboardPage user={user} />;
+        return <DashboardPage />;
       case 'budget':
-        return <BudgetPage user={user} />;
+        return <BudgetPage />;
       case 'transactions':
         return <TransactionsPage />;
       case 'goals':
@@ -80,9 +98,9 @@ function App() {
       case 'chat':
         return <ChatPage />;
       case 'settings':
-        return <SettingsPage user={user} onUpdateUser={handleUpdateUser} />;
+        return <SettingsPage />;
       default:
-        return <DashboardPage user={user} />;
+        return <DashboardPage />;
     }
   };
 
